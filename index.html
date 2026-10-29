@@ -1,157 +1,504 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>محاسبه تقسیم هزینه</title>
-    <style>
-        body { font-family: Tahoma, sans-serif; padding: 20px; background: #f4f4f4; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
-        th { background: #eee; }
-        input { width: 90px; padding: 5px; text-align: center; }
-        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #218838; }
-        #totalCost { width: 200px; font-weight: bold; }
-        .warn { color: #d9534f; margin-top: 10px; font-size: 0.9em; }
-        .summary { margin-top: 15px; padding: 10px; background: #eaf7ea; border-radius: 6px; font-size: 0.95em; }
-        .summary span { font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>تقسیم هزینه بر اساس مصرف</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --green: #28a745;
+      --green-dark: #218838;
+      --green-soft: #eaf7ea;
+      --page: #f4f4f4;
+      --surface: #fff;
+      --surface-muted: #f8f9fa;
+      --border: #e3e6e5;
+      --text: #26342b;
+      --muted: #657269;
+      --danger: #c94040;
+      --danger-soft: #fff2f0;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      margin: 0;
+      padding: 28px 16px;
+      background: var(--page);
+      color: var(--text);
+      font-family: Tahoma, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+
+    button, input { font: inherit; }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: clamp(18px, 4vw, 34px);
+      background: var(--surface);
+      border: 1px solid #eceeed;
+      border-radius: 16px;
+      box-shadow: 0 6px 28px rgba(25, 40, 28, .045);
+    }
+
+    .heading { margin-bottom: 24px; }
+    h1 { margin: 0 0 6px; font-size: clamp(20px, 3vw, 26px); line-height: 1.5; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .payment-panel {
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface-muted);
+    }
+
+    .payment-panel label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: bold; }
+    .payment-fields { display: flex; gap: 10px; align-items: stretch; }
+    .amount-field { position: relative; flex: 1 1 240px; min-width: 0; }
+    .amount-field input { padding-left: 58px; text-align: right; font-weight: bold; }
+    .suffix {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+
+    input {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #cfd7d1;
+      border-radius: 8px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      direction: ltr;
+      text-align: center;
+      font-size: 16px;
+      font-variant-numeric: tabular-nums;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input::placeholder { color: #9ba49d; font-weight: normal; }
+    input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(40, 167, 69, .13); }
+    input.is-invalid { border-color: var(--danger); background: #fffafa; }
+    input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(201, 64, 64, .10); }
+
+    button {
+      min-height: 46px;
+      padding: 9px 21px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: bold;
+      white-space: nowrap;
+      transition: background .15s, border-color .15s;
+    }
+
+    button:focus-visible { outline: 3px solid rgba(40, 167, 69, .35); outline-offset: 2px; }
+    .calculate-button { background: var(--green); color: white; }
+    .calculate-button:hover { background: var(--green-dark); }
+    .reset-button { background: white; border-color: #d6ddd8; color: #58675d; }
+    .reset-button:hover { background: #f1f3f2; }
+
+    .notice {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid #f2ceca;
+      border-radius: 9px;
+      background: var(--danger-soft);
+      color: #95352e;
+      font-size: 13px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 4px;
+    }
+
+    .summary-item { padding: 14px 16px; border: 1px solid #d6ead8; border-radius: 10px; background: var(--green-soft); }
+    .summary-label { display: block; margin-bottom: 6px; color: #54715a; font-size: 12px; }
+    .summary-value { display: block; color: #205e31; font-weight: bold; font-size: clamp(16px, 2.4vw, 20px); overflow-wrap: anywhere; }
+    .summary-unit { color: #527358; font-size: 12px; font-weight: normal; }
+
+    .table-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+    h2 { margin: 0; font-size: 17px; }
+    .table-hint { color: var(--muted); font-size: 12px; }
+
+    .data-table { width: 100%; border-spacing: 0; border: 1px solid var(--border); border-radius: 11px; overflow: hidden; }
+    .data-table th, .data-table td { padding: 12px 10px; text-align: center; vertical-align: middle; }
+    .data-table thead th { background: #f0f2f0; color: #58655b; font-size: 13px; font-weight: bold; }
+    .data-table tbody tr:not(:last-child) > * { border-bottom: 1px solid #edf0ee; }
+    .data-table tbody tr:hover { background: #fcfdfc; }
+    .data-table .unit-cell { width: 13%; font-weight: bold; }
+    .data-table .reading-cell { width: 19%; }
+    .data-table .consumption-cell { width: 17%; }
+    .data-table .share-cell { width: 32%; }
+    .data-table .reading-cell input { max-width: 170px; margin-inline: auto; }
+    .data-table .share { font-weight: bold; color: #218838; }
+    .mobile-label, .mobile-currency { display: none; }
+    .data-table .reading-cell label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .metric-value { display: inline-block; direction: ltr; unicode-bidi: isolate; }
+    .footer-note { margin: 15px 0 0; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 680px) {
+      body { padding: 0; }
+      .container { min-height: 100vh; padding: 19px 14px 30px; border: 0; border-radius: 0; box-shadow: none; }
+      .heading { margin-bottom: 18px; }
+      .payment-panel { padding: 14px; }
+      .payment-fields { flex-wrap: wrap; gap: 9px; }
+      .amount-field { flex-basis: 100%; }
+      .calculate-button { flex: 1 1 58%; }
+      .reset-button { flex: 1 1 32%; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .summary-item { padding: 12px; }
+      .summary-item:first-child { grid-column: 1 / -1; }
+      .summary-value { font-size: 19px; }
+      .table-heading { margin-top: 24px; }
+      .table-hint { max-width: 55%; text-align: left; }
+      .data-table { border: none; border-radius: 0; }
+      .data-table thead { display: none; }
+      .data-table tbody { display: grid; gap: 12px; }
+      .data-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px 10px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .data-table tbody tr:hover { background: #fff; }
+      .data-table tbody tr > * { width: auto !important; padding: 0; border: none !important; text-align: right; }
+      .data-table .unit-cell {
+        grid-column: 1 / -1;
+        padding-bottom: 9px;
+        border-bottom: 1px solid #edf0ee !important;
+        font-size: 15px;
+      }
+      .data-table .reading-cell label {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        margin: 0 0 5px;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .data-table .reading-cell input { max-width: none; }
+      .data-table .consumption-cell, .data-table .share-cell {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+        min-height: 66px;
+        padding: 10px 12px !important;
+        border-radius: 8px;
+        background: var(--surface-muted);
+      }
+      .data-table .share-cell { background: var(--green-soft); }
+      .mobile-label, .mobile-currency { display: block; color: var(--muted); font-size: 11px; }
+      .data-table .share { font-size: 17px; overflow-wrap: anywhere; }
+      .mobile-currency { color: #54715a; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h2>محاسبه تقسیم هزینه بر اساس مصرف</h2>
+  <main class="container">
+    <header class="heading">
+      <h1>محاسبه تقسیم هزینه بر اساس مصرف</h1>
+      <p class="subtitle">مبلغ کل و اعداد کنتور هر واحد را وارد کنید تا سهم پرداختی مشخص شود.</p>
+    </header>
 
-    <label>مبلغ کل قابل پرداخت (ریال):</label>
-    <input type="number" id="totalCost" placeholder="مثلاً 104888000">
-    <button onclick="calculate()">محاسبه</button>
-    <div id="warning" class="warn"></div>
+    <form id="costForm" novalidate>
+      <section class="payment-panel" aria-label="مبلغ قابل تقسیم">
+        <label for="totalCost">مبلغ کل قابل پرداخت</label>
+        <div class="payment-fields">
+          <div class="amount-field">
+            <input id="totalCost" type="text" inputmode="numeric" autocomplete="off" placeholder="مثلاً ۱۰۴٬۸۸۸٬۰۰۰" aria-describedby="costHelp">
+            <span class="suffix">ریال</span>
+          </div>
+          <button class="calculate-button" type="submit">محاسبه سهم‌ها</button>
+          <button class="reset-button" type="button" id="resetButton">پاک کردن</button>
+        </div>
+        <div class="subtitle" id="costHelp" style="margin-top:9px">ورود اعداد فارسی و انگلیسی امکان‌پذیر است.</div>
+      </section>
 
-    <table id="dataTable">
+      <div id="warning" class="notice" role="alert" hidden></div>
+
+      <section id="summary" class="summary" aria-label="خلاصه محاسبه" aria-live="polite" hidden>
+        <div class="summary-item">
+          <span class="summary-label">مجموع مصرف</span>
+          <span class="summary-value"><span id="totalConsumption">—</span> <span class="summary-unit">واحد مصرف</span></span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">نرخ تقریبی هر واحد مصرف</span>
+          <span class="summary-value"><span id="unitRate">—</span> <span class="summary-unit">ریال</span></span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">واحدهای محاسبه‌شده</span>
+          <span class="summary-value" id="includedCount">—</span>
+        </div>
+      </section>
+
+      <div class="table-heading">
+        <h2>اطلاعات واحدها</h2>
+        <span class="table-hint">مصرف هر واحد خودکار نمایش داده می‌شود.</span>
+      </div>
+
+      <table class="data-table" id="dataTable">
         <thead>
-            <tr>
-                <th>واحد</th>
-                <th>قبلی</th>
-                <th>فعلی</th>
-                <th>مصرف</th>
-                <th>سهم قابل پرداخت (ریال)</th>
-            </tr>
+          <tr>
+            <th scope="col">واحد</th>
+            <th scope="col">عدد قبلی</th>
+            <th scope="col">عدد فعلی</th>
+            <th scope="col">مصرف</th>
+            <th scope="col">سهم قابل پرداخت (ریال)</th>
+          </tr>
         </thead>
-        <tbody></tbody>
-    </table>
+        <tbody id="unitRows"></tbody>
+      </table>
 
-    <div id="summary" class="summary" style="display:none;"></div>
-</div>
+      <p class="footer-note">فقط واحدهایی که هر دو عدد معتبر دارند و عدد فعلی آن‌ها از قبلی کمتر نیست، در تقسیم هزینه لحاظ می‌شوند. اعداد کنتور می‌توانند تا سه رقم اعشار داشته باشند. در اعداد کنتور، ویرگول انگلیسی نیز ممیز اعشار محسوب می‌شود.</p>
+    </form>
+  </main>
 
-<script>
-    // داده‌های اولیه خالی — فقط شناسه واحدها مشخص است
-    const unitsData = [
-        { id: 1, prev: null, curr: null },
-        { id: 2, prev: null, curr: null },
-        { id: 3, prev: null, curr: null },
-        { id: 4, prev: null, curr: null },
-        { id: 5, prev: null, curr: null },
-        { id: 6, prev: null, curr: null },
-        { id: 7, prev: null, curr: null },
-        { id: 8, prev: null, curr: null }
-    ];
+  <script>
+    const UNIT_COUNT = 8;
+    const READING_SCALE = 1000n;
+    const form = document.getElementById('costForm');
+    const totalInput = document.getElementById('totalCost');
+    const rowsBody = document.getElementById('unitRows');
+    const warning = document.getElementById('warning');
+    const summary = document.getElementById('summary');
+    const numberFormatter = new Intl.NumberFormat('fa-IR');
+    let hasCalculated = false;
 
-    function renderTable() {
-        const tbody = document.querySelector('#dataTable tbody');
-        tbody.innerHTML = '';
-        unitsData.forEach((unit, index) => {
-            const prevVal = unit.prev === null ? '' : unit.prev;
-            const currVal = unit.curr === null ? '' : unit.curr;
-            const row = `
-                <tr>
-                    <td>${unit.id}</td>
-                    <td><input type="number" value="${prevVal}" placeholder="قبلی" oninput="updateData(${index}, 'prev', this.value)"></td>
-                    <td><input type="number" value="${currVal}" placeholder="فعلی" oninput="updateData(${index}, 'curr', this.value)"></td>
-                    <td class="consumption">-</td>
-                    <td class="share">-</td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
-        updateRowConsumption();
+    function formatInteger(value) {
+      return numberFormatter.format(value);
     }
 
-    function updateData(index, field, value) {
-        unitsData[index][field] = value === '' ? null : parseInt(value);
-        updateRowConsumption();
+    function toPersianDigits(value) {
+      return String(value).replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
     }
 
-    // مصرف هر ردیف را بدون نیاز به زدن دکمه محاسبه نمایش می‌دهد
-    function updateRowConsumption() {
-        const rows = document.querySelectorAll('#dataTable tbody tr');
-        unitsData.forEach((unit, index) => {
-            const cell = rows[index].querySelector('.consumption');
-            if (unit.prev !== null && unit.curr !== null) {
-                cell.textContent = unit.curr - unit.prev;
-            } else {
-                cell.textContent = '-';
-            }
-        });
+    // Accept Persian, Arabic, and Latin digits and common grouping separators.
+    function normalizeNumber(value, isReading = false) {
+      const normalized = value.trim()
+        .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x06F0))
+        .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x0660))
+        .replace(/٫/g, '.')
+        .replace(/[٬\s\u200c]/g, '');
+      return isReading ? normalized.replace(/,/g, '.') : normalized.replace(/,/g, '');
+    }
+
+    // Store meter readings as thousandths to avoid floating-point errors.
+    function parseReading(value) {
+      const normalized = normalizeNumber(value, true);
+      if (!normalized) return { status: 'empty' };
+      if (!/^\d+(?:\.\d{1,3})?$/.test(normalized)) return { status: 'invalid' };
+      const [whole, fraction = ''] = normalized.split('.');
+      return {
+        status: 'valid',
+        value: BigInt(whole) * READING_SCALE + BigInt(fraction.padEnd(3, '0'))
+      };
+    }
+
+    function parseCost(value) {
+      const normalized = normalizeNumber(value);
+      return /^\d+$/.test(normalized) && BigInt(normalized) > 0n
+        ? BigInt(normalized)
+        : null;
+    }
+
+    function formatReading(value) {
+      const whole = value / READING_SCALE;
+      const fraction = (value % READING_SCALE).toString().padStart(3, '0').replace(/0+$/, '');
+      return formatInteger(whole) + (fraction ? '٫' + toPersianDigits(fraction) : '');
+    }
+
+    function makeRows() {
+      rowsBody.innerHTML = Array.from({ length: UNIT_COUNT }, (_, i) => {
+        const id = i + 1;
+        const unitLabel = `واحد ${formatInteger(id)}`;
+        return `
+          <tr data-unit="${id}">
+            <th scope="row" class="unit-cell">${unitLabel}</th>
+            <td class="reading-cell">
+              <label for="previous-${id}">عدد قبلی</label>
+              <input id="previous-${id}" class="meter-input previous-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" aria-label="عدد قبلی ${unitLabel}" placeholder="۰">
+            </td>
+            <td class="reading-cell">
+              <label for="current-${id}">عدد فعلی</label>
+              <input id="current-${id}" class="meter-input current-input" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next" aria-label="عدد فعلی ${unitLabel}" placeholder="۰">
+            </td>
+            <td class="consumption-cell">
+              <span class="mobile-label">میزان مصرف</span>
+              <output class="metric-value consumption">—</output>
+            </td>
+            <td class="share-cell">
+              <span class="mobile-label">سهم قابل پرداخت</span>
+              <output class="metric-value share">—</output>
+              <span class="mobile-currency">ریال</span>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function getRowData() {
+      return Array.from(rowsBody.rows, row => {
+        const previousInput = row.querySelector('.previous-input');
+        const currentInput = row.querySelector('.current-input');
+        const previous = parseReading(previousInput.value);
+        const current = parseReading(currentInput.value);
+        const decreasing = previous.status === 'valid' && current.status === 'valid' && current.value < previous.value;
+        previousInput.classList.toggle('is-invalid', previous.status === 'invalid');
+        currentInput.classList.toggle('is-invalid', current.status === 'invalid' || decreasing);
+        const valid = previous.status === 'valid' && current.status === 'valid' && !decreasing;
+        const consumption = valid ? current.value - previous.value : null;
+        row.querySelector('.consumption').textContent = valid ? formatReading(consumption) : '—';
+        return { row, id: Number(row.dataset.unit), valid, consumption };
+      });
+    }
+
+    function showWarning(message) {
+      warning.textContent = message;
+      warning.hidden = !message;
+    }
+
+    function clearShares() {
+      for (const row of rowsBody.rows) row.querySelector('.share').textContent = '—';
+      summary.hidden = true;
     }
 
     function calculate() {
-        const totalCost = parseFloat(document.getElementById('totalCost').value);
-        const warningEl = document.getElementById('warning');
-        const summaryEl = document.getElementById('summary');
-        warningEl.textContent = '';
-        summaryEl.style.display = 'none';
+      const cost = parseCost(totalInput.value);
+      const allRows = getRowData();
+      const included = allRows.filter(item => item.valid);
+      const excluded = allRows.filter(item => !item.valid);
+      clearShares();
+      totalInput.classList.toggle('is-invalid', cost === null);
 
-        if (isNaN(totalCost) || totalCost <= 0) {
-            warningEl.textContent = 'لطفاً مبلغ کل قابل پرداخت را وارد کنید.';
-            return;
-        }
+      if (cost === null) {
+        showWarning('مبلغ کل باید یک عدد صحیح و بزرگ‌تر از صفر باشد.');
+        return;
+      }
+      if (included.length === 0) {
+        showWarning('برای محاسبه، اعداد قبلی و فعلی حداقل یک واحد را به‌صورت معتبر وارد کنید.');
+        return;
+      }
 
-        // فقط ردیف‌هایی که هم قبلی و هم فعلی دارند محاسبه می‌شوند
-        const completeRows = unitsData
-            .map((u, i) => ({ ...u, index: i }))
-            .filter(u => u.prev !== null && u.curr !== null && u.curr >= u.prev);
+      const totalConsumption = included.reduce((sum, item) => sum + item.consumption, 0n);
+      if (totalConsumption === 0n) {
+        showWarning('مجموع مصرف واحدهای معتبر صفر است و امکان تقسیم مبلغ وجود ندارد.');
+        return;
+      }
 
-        const incompleteCount = unitsData.length - completeRows.length;
+      // Largest-remainder allocation guarantees the sum of shares equals the invoice.
+      const allocations = included.map(item => {
+        const product = cost * item.consumption;
+        return { ...item, share: product / totalConsumption, remainder: product % totalConsumption };
+      });
+      let remaining = cost - allocations.reduce((sum, item) => sum + item.share, 0n);
+      const byRemainder = [...allocations].sort((a, b) => {
+        if (a.remainder === b.remainder) return a.id - b.id;
+        return a.remainder > b.remainder ? -1 : 1;
+      });
+      for (const item of byRemainder) {
+        if (remaining === 0n) break;
+        item.share += 1n;
+        remaining -= 1n;
+      }
+      for (const item of allocations) {
+        item.row.querySelector('.share').textContent = formatInteger(item.share);
+      }
 
-        if (completeRows.length === 0) {
-            warningEl.textContent = 'هیچ ردیف کاملی (با قبلی و فعلی معتبر) برای محاسبه وجود ندارد.';
-            return;
-        }
+      document.getElementById('totalConsumption').textContent = formatReading(totalConsumption);
+      const roundedRate = (cost * READING_SCALE + totalConsumption / 2n) / totalConsumption;
+      document.getElementById('unitRate').textContent = formatInteger(roundedRate);
+      document.getElementById('includedCount').textContent = `${formatInteger(included.length)} از ${formatInteger(UNIT_COUNT)}`;
+      summary.hidden = false;
 
-        const totalConsumption = completeRows.reduce((sum, u) => sum + (u.curr - u.prev), 0);
-
-        if (totalConsumption === 0) {
-            warningEl.textContent = 'مجموع مصرف ردیف‌های کامل صفر است.';
-            return;
-        }
-
-        const ratePerUnit = totalCost / totalConsumption;
-        const rows = document.querySelectorAll('#dataTable tbody tr');
-
-        // ابتدا همه سهم‌ها را "-" کن
-        rows.forEach(r => r.querySelector('.share').textContent = '-');
-
-        // سهم ردیف‌های کامل را محاسبه کن
-        completeRows.forEach(u => {
-            const consumption = u.curr - u.prev;
-            const share = Math.round(consumption * ratePerUnit);
-            rows[u.index].querySelector('.share').textContent = share.toLocaleString('fa-IR');
-        });
-
-        // خلاصه
-        summaryEl.style.display = 'block';
-        summaryEl.innerHTML = `
-            مجموع مصرف ردیف‌های کامل: <span>${totalConsumption.toLocaleString('fa-IR')}</span> واحد —
-            نرخ هر واحد: <span>${Math.round(ratePerUnit).toLocaleString('fa-IR')}</span> ریال
-            ${incompleteCount > 0 ? `<br>⚠️ ${incompleteCount} ردیف ناقص از محاسبه کنار گذاشته شد.` : ''}
-        `;
-
-        if (incompleteCount > 0) {
-            warningEl.textContent = `توجه: ${incompleteCount} ردیف فاقد مقدار قبلی یا فعلی است و در محاسبه لحاظ نشد.`;
-        }
+      if (excluded.length) {
+        const ids = excluded.map(item => formatInteger(item.id)).join('، ');
+        showWarning(`توجه: واحدهای ${ids} به‌دلیل اطلاعات ناقص یا نامعتبر در محاسبه لحاظ نشدند؛ کل مبلغ فقط بین واحدهای معتبر تقسیم شده است.`);
+      } else {
+        showWarning('');
+      }
     }
 
-    renderTable();
-</script>
+    function formatInputOnBlur(input) {
+      if (input === totalInput) {
+        const value = parseCost(input.value);
+        if (value !== null) input.value = formatInteger(value);
+      } else if (input.classList.contains('meter-input')) {
+        const reading = parseReading(input.value);
+        if (reading.status === 'valid') input.value = formatReading(reading.value);
+      }
+    }
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      hasCalculated = true;
+      calculate();
+    });
+
+    form.addEventListener('input', event => {
+      if (!event.target.matches('input')) return;
+      getRowData();
+      if (hasCalculated) calculate();
+    });
+
+    form.addEventListener('focusout', event => {
+      if (event.target.matches('input')) formatInputOnBlur(event.target);
+    });
+
+    form.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || !event.target.matches('input')) return;
+      event.preventDefault();
+      const fields = [totalInput, ...rowsBody.querySelectorAll('.meter-input')];
+      const next = fields[fields.indexOf(event.target) + 1];
+      if (next) next.focus();
+      else {
+        event.target.blur();
+        hasCalculated = true;
+        calculate();
+      }
+    });
+
+    document.getElementById('resetButton').addEventListener('click', () => {
+      const hasData = Array.from(form.querySelectorAll('input')).some(input => input.value.trim());
+      if (hasData && !confirm('همه اعداد واردشده پاک شوند؟')) return;
+      form.reset();
+      hasCalculated = false;
+      totalInput.classList.remove('is-invalid');
+      for (const input of rowsBody.querySelectorAll('.meter-input')) input.classList.remove('is-invalid');
+      getRowData();
+      clearShares();
+      showWarning('');
+    });
+
+    makeRows();
+  </script>
 </body>
 </html>
