@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-Variable-font-face.css">
   <title>تقسیم هزینه بر اساس مصرف</title>
   <style>
     :root {
@@ -30,7 +32,7 @@
       padding: 28px 16px;
       background: var(--page);
       color: var(--text);
-      font-family: Tahoma, "Segoe UI", sans-serif;
+      font-family: Vazirmatn, Tahoma, "Segoe UI", sans-serif;
       line-height: 1.7;
     }
 
@@ -112,6 +114,43 @@
     .reset-button { background: white; border-color: #d6ddd8; color: #58675d; }
     .reset-button:hover { background: #f1f3f2; }
 
+    .rounding-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .rounding-checkbox {
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+      min-height: 20px;
+      margin: 3px 0 0;
+      padding: 0;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+    .rounding-description { display: flex; flex-direction: column; gap: 2px; }
+    .rounding-label { color: var(--text); font-size: 14px; font-weight: bold; }
+    .rounding-hint { margin: 0; color: var(--muted); font-size: 12px; }
+    .rounding-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 12px 0 0;
+    }
+    .rounding-summary .summary-item { background: #f8faf8; border-color: var(--border); }
+    .rounding-summary .summary-value { color: var(--text); }
+    .rounding-summary-note {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
     .notice {
       margin-top: 14px;
       padding: 12px 14px;
@@ -134,9 +173,15 @@
     .summary-value { display: block; color: #205e31; font-weight: bold; font-size: clamp(16px, 2.4vw, 20px); overflow-wrap: anywhere; }
     .summary-unit { color: #527358; font-size: 12px; font-weight: normal; }
 
-    .table-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+    .table-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 26px 0 12px; }
+    .table-heading-main { min-width: 0; }
     h2 { margin: 0; font-size: 17px; }
-    .table-hint { color: var(--muted); font-size: 12px; }
+    .table-hint { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .copy-button { background: #fff; color: var(--green-dark); border-color: #a8d8b4; font-size: 14px; }
+    .copy-button:hover:not(:disabled) { background: var(--green-soft); }
+    .copy-button:disabled { opacity: .5; cursor: not-allowed; }
+    .copy-feedback { margin: -3px 0 12px; color: var(--green-dark); font-size: 12px; }
+    .copy-feedback.is-error { color: var(--danger); }
 
     .data-table { width: 100%; border-spacing: 0; border: 1px solid var(--border); border-radius: 11px; overflow: hidden; }
     .data-table th, .data-table td { padding: 12px 10px; text-align: center; vertical-align: middle; }
@@ -163,12 +208,14 @@
       .amount-field { flex-basis: 100%; }
       .calculate-button { flex: 1 1 58%; }
       .reset-button { flex: 1 1 32%; }
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .summary, .rounding-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
       .summary-item { padding: 12px; }
       .summary-item:first-child { grid-column: 1 / -1; }
       .summary-value { font-size: 19px; }
-      .table-heading { margin-top: 24px; }
-      .table-hint { max-width: 55%; text-align: left; }
+      .rounding-summary .summary-value { font-size: 17px; }
+      .table-heading { margin-top: 24px; flex-wrap: wrap; }
+      .table-heading-main { flex: 1 1 100%; }
+      .copy-button { width: 100%; }
       .data-table { border: none; border-radius: 0; }
       .data-table thead { display: none; }
       .data-table tbody { display: grid; gap: 12px; }
@@ -242,6 +289,13 @@
           <button class="reset-button" type="button" id="resetButton">پاک کردن</button>
         </div>
         <div class="subtitle" id="costHelp" style="margin-top:9px">ورود اعداد فارسی و انگلیسی امکان‌پذیر است.</div>
+        <label class="rounding-option" for="roundingCheckbox">
+          <input class="rounding-checkbox" id="roundingCheckbox" type="checkbox" aria-describedby="roundingHint" checked>
+          <span class="rounding-description">
+            <span class="rounding-label">گرد کردن مبالغ</span>
+            <span class="rounding-hint" id="roundingHint">سهم هر واحد به نزدیک‌ترین مضرب ۱۰٬۰۰۰ ریال در جهت بالا گرد می‌شود.</span>
+          </span>
+        </label>
       </section>
 
       <div id="warning" class="notice" role="alert" hidden></div>
@@ -261,10 +315,26 @@
         </div>
       </section>
 
+      <section id="roundingSummary" class="rounding-summary" aria-label="خلاصه گرد کردن" aria-live="polite" hidden>
+        <div class="summary-item">
+          <span class="summary-label">جمع سهم‌های گرد‌شده</span>
+          <span class="summary-value"><span id="roundedTotal">—</span> <span class="summary-unit">ریال</span></span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">مازاد نسبت به مبلغ قبض</span>
+          <span class="summary-value"><span id="roundingExtra">—</span> <span class="summary-unit">ریال</span></span>
+        </div>
+        <p class="rounding-summary-note">گرد کردن رو به بالا ممکن است مجموع دریافتی را از مبلغ اصلی بیشتر کند.</p>
+      </section>
+
       <div class="table-heading">
-        <h2>اطلاعات واحدها</h2>
-        <span class="table-hint">مصرف هر واحد خودکار نمایش داده می‌شود.</span>
+        <div class="table-heading-main">
+          <h2>اطلاعات واحدها</h2>
+          <span class="table-hint">مصرف هر واحد خودکار نمایش داده می‌شود.</span>
+        </div>
+        <button class="copy-button" id="copyButton" type="button" disabled>کپی سهم واحدها</button>
       </div>
+      <p id="copyFeedback" class="copy-feedback" role="status" aria-live="polite" hidden></p>
 
       <table class="data-table" id="dataTable">
         <thead>
@@ -286,11 +356,16 @@
   <script>
     const UNIT_COUNT = 8;
     const READING_SCALE = 1000n;
+    const ROUNDING_STEP = 10000n;
     const form = document.getElementById('costForm');
     const totalInput = document.getElementById('totalCost');
     const rowsBody = document.getElementById('unitRows');
     const warning = document.getElementById('warning');
     const summary = document.getElementById('summary');
+    const roundingSummary = document.getElementById('roundingSummary');
+    const roundingCheckbox = document.getElementById('roundingCheckbox');
+    const copyButton = document.getElementById('copyButton');
+    const copyFeedback = document.getElementById('copyFeedback');
     const numberFormatter = new Intl.NumberFormat('fa-IR');
     let hasCalculated = false;
 
@@ -386,9 +461,18 @@
       warning.hidden = !message;
     }
 
+    function showCopyFeedback(message, isError = false) {
+      copyFeedback.textContent = message;
+      copyFeedback.hidden = !message;
+      copyFeedback.classList.toggle('is-error', isError);
+    }
+
     function clearShares() {
       for (const row of rowsBody.rows) row.querySelector('.share').textContent = '—';
       summary.hidden = true;
+      roundingSummary.hidden = true;
+      copyButton.disabled = true;
+      showCopyFeedback('');
     }
 
     function calculate() {
@@ -429,8 +513,14 @@
         item.share += 1n;
         remaining -= 1n;
       }
+      // Round each allocated share upward only when the user enables this option.
+      let payableTotal = 0n;
       for (const item of allocations) {
-        item.row.querySelector('.share').textContent = formatInteger(item.share);
+        const payable = roundingCheckbox.checked
+          ? ((item.share + ROUNDING_STEP - 1n) / ROUNDING_STEP) * ROUNDING_STEP
+          : item.share;
+        item.row.querySelector('.share').textContent = formatInteger(payable);
+        payableTotal += payable;
       }
 
       document.getElementById('totalConsumption').textContent = formatReading(totalConsumption);
@@ -438,6 +528,12 @@
       document.getElementById('unitRate').textContent = formatInteger(roundedRate);
       document.getElementById('includedCount').textContent = `${formatInteger(included.length)} از ${formatInteger(UNIT_COUNT)}`;
       summary.hidden = false;
+      copyButton.disabled = false;
+      if (roundingCheckbox.checked) {
+        document.getElementById('roundedTotal').textContent = formatInteger(payableTotal);
+        document.getElementById('roundingExtra').textContent = formatInteger(payableTotal - cost);
+        roundingSummary.hidden = false;
+      }
 
       if (excluded.length) {
         const ids = excluded.map(item => formatInteger(item.id)).join('، ');
@@ -446,6 +542,46 @@
         showWarning('');
       }
     }
+
+    // Use the native Clipboard API when available, with a fallback for local HTML files.
+    async function writeClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch (error) {
+          // Some browsers restrict clipboard access, so try the legacy method.
+        }
+      }
+
+      const temporaryInput = document.createElement('textarea');
+      temporaryInput.value = text;
+      temporaryInput.readOnly = true;
+      temporaryInput.style.cssText = 'position:fixed;top:0;left:-9999px;opacity:0';
+      document.body.appendChild(temporaryInput);
+      temporaryInput.focus();
+      temporaryInput.select();
+      temporaryInput.setSelectionRange(0, temporaryInput.value.length);
+      try {
+        if (!document.execCommand('copy')) throw new Error('Clipboard unavailable');
+      } finally {
+        temporaryInput.remove();
+      }
+    }
+
+    copyButton.addEventListener('click', async () => {
+      if (copyButton.disabled) return;
+      // Include all eight units in order. Excluded units retain their dash.
+      const lines = Array.from(rowsBody.rows, row =>
+        `واحد ${formatInteger(Number(row.dataset.unit))}: ${row.querySelector('.share').textContent}`
+      );
+      try {
+        await writeClipboard(lines.join('\n'));
+        showCopyFeedback('سهم ۸ واحد در ۸ خط کپی شد.');
+      } catch (error) {
+        showCopyFeedback('کپی خودکار ممکن نیست. دسترسی کلیپ‌بورد مرورگر را بررسی کنید.', true);
+      }
+    });
 
     function formatInputOnBlur(input) {
       if (input === totalInput) {
@@ -464,17 +600,17 @@
     });
 
     form.addEventListener('input', event => {
-      if (!event.target.matches('input')) return;
+      if (!event.target.matches('input[type="text"]')) return;
       getRowData();
       if (hasCalculated) calculate();
     });
 
     form.addEventListener('focusout', event => {
-      if (event.target.matches('input')) formatInputOnBlur(event.target);
+      if (event.target.matches('input[type="text"]')) formatInputOnBlur(event.target);
     });
 
     form.addEventListener('keydown', event => {
-      if (event.key !== 'Enter' || !event.target.matches('input')) return;
+      if (event.key !== 'Enter' || !event.target.matches('input[type="text"]')) return;
       event.preventDefault();
       const fields = [totalInput, ...rowsBody.querySelectorAll('.meter-input')];
       const next = fields[fields.indexOf(event.target) + 1];
@@ -486,8 +622,12 @@
       }
     });
 
+    roundingCheckbox.addEventListener('change', () => {
+      if (hasCalculated) calculate();
+    });
+
     document.getElementById('resetButton').addEventListener('click', () => {
-      const hasData = Array.from(form.querySelectorAll('input')).some(input => input.value.trim());
+      const hasData = Array.from(form.querySelectorAll('input[type="text"]')).some(input => input.value.trim());
       if (hasData && !confirm('همه اعداد واردشده پاک شوند؟')) return;
       form.reset();
       hasCalculated = false;
