@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>محاسبه تقسیم هزینه</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; padding: 20px; background: #f4f4f4; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background: #eee; }
+        input { width: 90px; padding: 5px; text-align: center; }
+        button { padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #218838; }
+        #totalCost { width: 200px; font-weight: bold; }
+        .warn { color: #d9534f; margin-top: 10px; font-size: 0.9em; }
+        .summary { margin-top: 15px; padding: 10px; background: #eaf7ea; border-radius: 6px; font-size: 0.95em; }
+        .summary span { font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>محاسبه تقسیم هزینه بر اساس مصرف</h2>
+
+    <label>مبلغ کل قابل پرداخت (ریال):</label>
+    <input type="number" id="totalCost" placeholder="مثلاً 104888000">
+    <button onclick="calculate()">محاسبه</button>
+    <div id="warning" class="warn"></div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>واحد</th>
+                <th>قبلی</th>
+                <th>فعلی</th>
+                <th>مصرف</th>
+                <th>سهم قابل پرداخت (ریال)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="summary" class="summary" style="display:none;"></div>
+</div>
+
+<script>
+    // داده‌های اولیه خالی — فقط شناسه واحدها مشخص است
+    const unitsData = [
+        { id: 1, prev: null, curr: null },
+        { id: 2, prev: null, curr: null },
+        { id: 3, prev: null, curr: null },
+        { id: 4, prev: null, curr: null },
+        { id: 5, prev: null, curr: null },
+        { id: 6, prev: null, curr: null },
+        { id: 7, prev: null, curr: null },
+        { id: 8, prev: null, curr: null }
+    ];
+
+    function renderTable() {
+        const tbody = document.querySelector('#dataTable tbody');
+        tbody.innerHTML = '';
+        unitsData.forEach((unit, index) => {
+            const prevVal = unit.prev === null ? '' : unit.prev;
+            const currVal = unit.curr === null ? '' : unit.curr;
+            const row = `
+                <tr>
+                    <td>${unit.id}</td>
+                    <td><input type="number" value="${prevVal}" placeholder="قبلی" oninput="updateData(${index}, 'prev', this.value)"></td>
+                    <td><input type="number" value="${currVal}" placeholder="فعلی" oninput="updateData(${index}, 'curr', this.value)"></td>
+                    <td class="consumption">-</td>
+                    <td class="share">-</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+        updateRowConsumption();
+    }
+
+    function updateData(index, field, value) {
+        unitsData[index][field] = value === '' ? null : parseInt(value);
+        updateRowConsumption();
+    }
+
+    // مصرف هر ردیف را بدون نیاز به زدن دکمه محاسبه نمایش می‌دهد
+    function updateRowConsumption() {
+        const rows = document.querySelectorAll('#dataTable tbody tr');
+        unitsData.forEach((unit, index) => {
+            const cell = rows[index].querySelector('.consumption');
+            if (unit.prev !== null && unit.curr !== null) {
+                cell.textContent = unit.curr - unit.prev;
+            } else {
+                cell.textContent = '-';
+            }
+        });
+    }
+
+    function calculate() {
+        const totalCost = parseFloat(document.getElementById('totalCost').value);
+        const warningEl = document.getElementById('warning');
+        const summaryEl = document.getElementById('summary');
+        warningEl.textContent = '';
+        summaryEl.style.display = 'none';
+
+        if (isNaN(totalCost) || totalCost <= 0) {
+            warningEl.textContent = 'لطفاً مبلغ کل قابل پرداخت را وارد کنید.';
+            return;
+        }
+
+        // فقط ردیف‌هایی که هم قبلی و هم فعلی دارند محاسبه می‌شوند
+        const completeRows = unitsData
+            .map((u, i) => ({ ...u, index: i }))
+            .filter(u => u.prev !== null && u.curr !== null && u.curr >= u.prev);
+
+        const incompleteCount = unitsData.length - completeRows.length;
+
+        if (completeRows.length === 0) {
+            warningEl.textContent = 'هیچ ردیف کاملی (با قبلی و فعلی معتبر) برای محاسبه وجود ندارد.';
+            return;
+        }
+
+        const totalConsumption = completeRows.reduce((sum, u) => sum + (u.curr - u.prev), 0);
+
+        if (totalConsumption === 0) {
+            warningEl.textContent = 'مجموع مصرف ردیف‌های کامل صفر است.';
+            return;
+        }
+
+        const ratePerUnit = totalCost / totalConsumption;
+        const rows = document.querySelectorAll('#dataTable tbody tr');
+
+        // ابتدا همه سهم‌ها را "-" کن
+        rows.forEach(r => r.querySelector('.share').textContent = '-');
+
+        // سهم ردیف‌های کامل را محاسبه کن
+        completeRows.forEach(u => {
+            const consumption = u.curr - u.prev;
+            const share = Math.round(consumption * ratePerUnit);
+            rows[u.index].querySelector('.share').textContent = share.toLocaleString('fa-IR');
+        });
+
+        // خلاصه
+        summaryEl.style.display = 'block';
+        summaryEl.innerHTML = `
+            مجموع مصرف ردیف‌های کامل: <span>${totalConsumption.toLocaleString('fa-IR')}</span> واحد —
+            نرخ هر واحد: <span>${Math.round(ratePerUnit).toLocaleString('fa-IR')}</span> ریال
+            ${incompleteCount > 0 ? `<br>⚠️ ${incompleteCount} ردیف ناقص از محاسبه کنار گذاشته شد.` : ''}
+        `;
+
+        if (incompleteCount > 0) {
+            warningEl.textContent = `توجه: ${incompleteCount} ردیف فاقد مقدار قبلی یا فعلی است و در محاسبه لحاظ نشد.`;
+        }
+    }
+
+    renderTable();
+</script>
+</body>
+</html>
